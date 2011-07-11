@@ -1,0 +1,16 @@
+README - Quasar kernel
+
+Leo Testard <leo.testard@gmail.com>
+Florent Revest <florent.revest666@gmail.com>
+
+You will need the following tools to get Quasar working :
+	* gcc
+	* nasm
+	* ld
+	* Grub2
+	* xorriso (used to generate the disk image)
+
+To compile, cd to stage2 and run :
+	* make
+	* make image # this will generates the disk image, need root privileges
+	* make qemu # to test it out, you will need the qemu emulator
