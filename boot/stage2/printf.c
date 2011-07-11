@@ -1,3 +1,27 @@
+/*
+ * printf.c
+ * Copyright (C) 2011 Leo Testard <leo.testard@gmail.com>
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
+/*
+ * Re-implementation of the C stdlib printf function.
+ * Also implements internally the itoa and strlen functions of the
+ * cstdlib as printf needs them.
+ */
+ 
 #include <stdarg.h>
 
 int x = 0, y = 0;
@@ -23,15 +47,13 @@ static void itoa (char *buf, int d, int base)
         buf++;
         ud = -d;
     }
-    else if (base == 'x')
-        base = 16;
      
     /* Divide UD by DIVISOR until UD == 0. */
     do
     {
         int remainder = ud % base;
      
-        *p++ = (remainder < 10) ? remainder + '0' : remainder + 'a' - 10;
+        *p++ = (remainder < 10) ? remainder+'0' : remainder+'a'-10;
     }
     while (ud /= base);
      
@@ -93,7 +115,9 @@ static void putcar(unsigned char c)
     
     if(y > 24)
     {
-        for(video = (unsigned char *) 0xB8000; video < (unsigned char *)0xB8000 + 160*25; video+=2)
+        for(video = (unsigned char *) 0xB8000; 
+			video < (unsigned char *)0xB8000 + 160*25; 
+			video+=2)
         {
             tmp = (unsigned char*) (video + 160*(y - 24));
             

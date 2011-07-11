@@ -1,5 +1,35 @@
+/*
+ * disk.c
+ * Copyright (C) 2011 Leo Testard <leo.testard@gmail.com>
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*
+ * Minimal IDE drives management of stage2. 
+ * The whereami() function lists IDE devices presents. Currently, it
+ * can only read ATA devices. When such a device is found, it lists its
+ * primary partitions and print their FS type according to the magic
+ * number present in the partition table. This is done by the 
+ * identify_fs() function.
+ */
+ 
 #include "stage2.h"
 
+/*
+ * Loops for the given delay. Used to wait the end of an I/O operation.
+ */
 static inline void udelay(unsigned int delay)
 {
     int i;
@@ -10,6 +40,10 @@ static inline void udelay(unsigned int delay)
     }
 }
 
+/*
+ * Returns the name of the FS according to the magic number.
+ * number-to-fs correspondance is defined in stage2.h
+ */
 static char *identify_fs(unsigned char magic_number)
 {
     switch(magic_number)
@@ -25,8 +59,14 @@ static char *identify_fs(unsigned char magic_number)
     }
 }
             
-
-static void ide_read(long sector, void *buf, unsigned short port, char master)
+/*
+ * Read a single sector (located at the offset 'sector') on the given
+ * drive, and place it in 'buf'. 'port' is the processor port of the
+ * device that should be used, and master indicates if the drive is the
+ * master or slave drive on the controller
+ */
+static void 
+ide_read(long sector, void *buf, unsigned short port, char master)
 {
     unsigned char cyl_low, cyl_high, sect, head, status;
     int devselect, i, timeout;
@@ -49,6 +89,7 @@ static void ide_read(long sector, void *buf, unsigned short port, char master)
     outb(port + ATA_DRIVE, ATA_DRIVE_IBM | devselect);
     udelay(100);
     
+    /* select the sector */
     outb(port + ATA_DEVICE_CONTROL, ATA_4BIT);
     outb(port + ATA_ERROR, 1);
     outb(port + ATA_PRECOMP, 0);
@@ -60,7 +101,8 @@ static void ide_read(long sector, void *buf, unsigned short port, char master)
     
     /* send the read command */
     outb(port + ATA_CMD, ATA_CMD_READ);
-    
+
+	/* wait for the device to be ready */
     for(timeout = 0; timeout < 30000; timeout++)
     {
         status = inb(port + ATA_STATUS);
@@ -69,12 +111,15 @@ static void ide_read(long sector, void *buf, unsigned short port, char master)
         udelay(1);
     }
     
+    /* get the data */
     buffer = (short *) buf;
     for(i = 0; i < 256; i++)
         buffer[i] = inw(port + ATA_DATA);
 }
 
-
+/*
+ * Lists the drives and their partitions on the IDE controllers 
+ */
 void whereami()
 {
     int i, j, k;
@@ -102,8 +147,6 @@ void whereami()
         ctrl_port = ctrl_ports[i];
         
         /* is our controller present ? */
-        /* je précise que je n'ai rien compris à comment on fait
-           mais qu'apparemment on fait comme ça alors c'est cool */
         byte1 = inb(port + 6);
         byte2 = (byte1 & 0x10) >> 4;
         if(byte2 == 0)
@@ -136,27 +179,35 @@ void whereami()
             
             if((a == 1) && (b == 1))
             {
+				/* which type of device is this ? */
                 a = inb(port + ATA_CYL_LSB);
                 b = inb(port + ATA_CYL_MSB);
                 
                 if((a == 0) && (b == 0))
                 {
                     /* this is an ATA drive */
-                    printf(">     Found ATA drive. Looking for partitions \n");
+                    printf(">     Found ATA drive." 
+							"Looking for partitions \n");
+                    
+                    /* read the partition table */
                     ide_read(0, &bufsect, port, ATA_DISK_MASTER);
+                    /* check if we have a valid MBR signature */
                     if((bufsect[510] == 0x55) && (bufsect[511] == 0xAA))
                     {
                         for(j = 0; j < 4; j++)
                         {
-                            char *buf = identify_fs(bufsect[450 + j * 16]);
-                            printf(">           Found partition type %s\n",buf);
+                            char *buf = identify_fs(bufsect[450+j*16]);
+                            printf(">           Found partition type "
+                                   "%s\n",buf);
                         }
-                    }
-                }
+                    } 
+                } 
                 
                 else if((a == 0x14) && (b == 0xEB))
                     printf(">     Found ATAPI drive \n");
             }
         }
+        
+        /* the controller is missing, do nothing */
     }
 }
