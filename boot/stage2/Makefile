@@ -8,7 +8,7 @@ AS=nasm
 all: $(SOURCES) link
 
 clean:
-	rm *.o stage2.bin
+	rm *.o stage2.bin image-fs/system/stage2.bin
 
 link:
 	ld $(LDFLAGS) -o stage2.bin $(SOURCES)
@@ -22,8 +22,9 @@ stage2_c.o: stage2.c
 .o: .c
 	$(CC) $(CFLAGS) -c $^ -o $@
 	
-image: update_image.sh
-	bash update_image.sh
+image: 
+	cp stage2.bin image-fs/system/stage2.bin
+	grub-mkrescue -o Quasar.iso image-fs/
 
 qemu:
-	qemu -boot a -fda floppy.img -hda c.img
+	qemu -boot d -cdrom Quasar.iso
