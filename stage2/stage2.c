@@ -40,10 +40,6 @@ int main(unsigned long magic, struct multiboot *mboot)
     unsigned int bootdev, flags;
     int i = 0;
     
-    /* Clear screen */
-    for(i; i < 160*25; i++)
-        *(video + i) = 0;
-        
     /* Are you Grub ? */
     if(magic == MULTIBOOT_BOOTLOADER_MAGIC)
     {
