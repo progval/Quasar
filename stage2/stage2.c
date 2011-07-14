@@ -30,14 +30,36 @@
 /* macro to reboot the computer */
 #define reboot() outb(0x64, 0xFE)
 
+void paging_init()
+{
+    unsigned int *page_directory = (unsigned int *)0x20000;
+    unsigned int *page_table = (unsigned int *)0x21000;
+    unsigned int page_addr = 0;
+    int i;
+
+    /* The first entry point to the first page table located just after the page directory */
+    page_directory[0] = 0x21000 | 3;
+    for(i = 1; i < 1024; i++)
+        page_directory[i] = 0;
+
+    for(i = 0; i < 1024; i++, page_addr += 4096)
+        page_table[i] = page_addr | 3;
+
+    asm("   mov %0, %%eax    \n \
+            mov %%eax, %%cr3 \n \
+            mov %%cr0, %%eax \n \
+            or %1, %%eax     \n \
+            mov %%eax, %%cr0" :: "i"(0x20000), "i"(0x80000000));
+}
+
 struct gdt_descriptors_table gdt_table;
 struct gdt_segment_descriptor segments[256];
 
 inline static void gdt_init_descriptor(int n, 
-                  unsigned int base, 
-                  unsigned int limit, 
-                  unsigned char access, 
-                  unsigned char flags)
+                                       unsigned int base, 
+                                       unsigned int limit, 
+                                       unsigned char access, 
+                                       unsigned char flags)
 {    
     /* put the values in the structure */
     segments[n].limit_low = limit & 0xFFFF;
@@ -88,6 +110,7 @@ int main(unsigned long magic, struct multiboot *mboot)
     unsigned int bootdev, flags;
     int i = 0;
     gdt_init();
+    paging_init();
     
     /* Are you Grub ? */
     if(magic == MULTIBOOT_BOOTLOADER_MAGIC)

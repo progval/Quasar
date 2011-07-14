@@ -80,13 +80,10 @@ clear_screen:
         pop ebx
         pop eax
         ret
-        
-    
 
 start:
     call clear_screen
     push ebx     ; the multi boot structure
     push eax     ; the mutliboot bootloader magic number
-    cli          ; shut down interrupts
     call main    ; enter C code
     jmp $        ; infinite loop
