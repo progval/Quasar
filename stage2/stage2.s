@@ -64,25 +64,6 @@ mboot:
 ; make the stage2's C main accessible from this code
 [EXTERN main]
 
-gdt:
-    null_desc:
-        dd 0, 0
-    code_desc:
-        dw 0x0FFFF
-        dw 0
-        dw 0x9A00
-        dw 0x00C0
-    data_desc:
-        dw 0x0FFFF
-        dw 0
-        dw 0x9200
-        dw 0x00C0
-gdt_end:
-
-gdt_desc:
-    dw gdt_end - gdt -1
-    dd gdt
-
 clear_screen:
     push eax
     push ebx
@@ -103,11 +84,6 @@ clear_screen:
     
 
 start:
-    pusha
-    cli
-    lgdt [gdt_desc]
-    sti
-    popa
     call clear_screen
     push ebx     ; the multi boot structure
     push eax     ; the mutliboot bootloader magic number

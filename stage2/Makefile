@@ -1,4 +1,4 @@
-SOURCES=stage2_s.o stage2_c.o printf.o disk.o io.o
+SOURCES=stage2_s.o stage2_c.o printf.o disk.o io.o idt.o interrupts_callback.o
 CFLAGS=-nostdlib -fno-builtin -fno-stack-protector
 LDFLAGS=-Tlinker.ld
 ASFLAGS=-f elf
@@ -15,6 +15,9 @@ link:
 
 stage2_s.o: stage2.s
 	$(AS) $(ASFLAGS) -o stage2_s.o stage2.s
+	
+interrupts_callback.o: interrupts_callback.s
+	$(AS) $(ASFLAGS) -o interrupts_callback.o interrupts_callback.s
 
 stage2_c.o: stage2.c
 	$(CC) $(CFLAGS) -c stage2.c -o stage2_c.o

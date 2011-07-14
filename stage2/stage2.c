@@ -27,8 +27,56 @@
 
 /* Macro that tells if the bit 'n' of 'flags' is set to 1 */
 #define IS_SET(flags,n) ((flags >> n) & 0x1)
-
+/* macro to reboot the computer */
 #define reboot() outb(0x64, 0xFE)
+
+struct gdt_descriptors_table gdt_table;
+struct gdt_segment_descriptor segments[256];
+
+inline static void gdt_init_descriptor(int n, 
+                  unsigned int base, 
+                  unsigned int limit, 
+                  unsigned char access, 
+                  unsigned char flags)
+{    
+    /* put the values in the structure */
+    segments[n].limit_low = limit & 0xFFFF;
+    segments[n].limit_high = (limit & 0xF0000) >> 16;
+    
+    segments[n].base_low = base & 0xFFFF;
+    segments[n].base_mid = (base >> 16) & 0xFF;
+    segments[n].base_high = (base >> 24) & 0xFF;
+    
+    segments[n].access = access;
+    segments[n].flags = flags & 0xF;
+}
+
+void gdt_init()
+{
+    /* We use 4 segments, the null segment, and one for code, data, and stack */ 
+    gdt_init_descriptor(0, 0x0, 0x0, 0x0, 0x0);
+	gdt_init_descriptor(1, 0x0, 0xFFFFF, 0x9B, 0x0D);
+	gdt_init_descriptor(2, 0x0, 0xFFFFF, 0x93, 0x0D);
+	gdt_init_descriptor(3, 0x0, 0x0, 0x97, 0x0D);	
+	
+	/* The total size of our descriptors is 256 descriptors x 8 bytes (each 
+	   descriptor is 8-bytes long) */
+	gdt_table.limit = 256*8;
+	gdt_table.base = (unsigned int) &segments;
+	
+	/* tell the processor that we have and a brand new GDT */
+	asm("lgdtl (gdt_table)");
+	
+	/* Load our segments */
+	asm("   movw $0x10, %ax	\n \
+            movw %ax, %ds	\n \
+            movw %ax, %es	\n \
+            movw %ax, %fs	\n \
+            movw %ax, %gs	\n \
+            ljmp $0x08, $next	\n \
+            next:		\n");
+            
+}
 
 /*
  * Entry point, called from the ASM file. Main method of stage2
@@ -39,6 +87,7 @@ int main(unsigned long magic, struct multiboot *mboot)
     char *cmdline;
     unsigned int bootdev, flags;
     int i = 0;
+    gdt_init();
     
     /* Are you Grub ? */
     if(magic == MULTIBOOT_BOOTLOADER_MAGIC)
@@ -71,6 +120,7 @@ int main(unsigned long magic, struct multiboot *mboot)
     else
         printf("> Booting from an unknown bootloader \n");
     
-    whereami();
-    return 0;
+    idt_init();
+    asm("sti");
+    while(1);
 }

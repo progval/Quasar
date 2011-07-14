@@ -21,7 +21,7 @@
  * stage2.h
  * main header of stage2
  * contains defines and structs needed by the other components 
- * of Stage2 relatives to IDE management and Multiboot compliance.  
+ * of Stage2 relatives to IDE and GDT management and Multiboot compliance.  
  */
 
 #ifndef STAGE2_H
@@ -133,5 +133,31 @@ struct multiboot {
 
 #define NO_FS                   0x0
 #define FS_EXT                  0x83
+
+/* definitions related to GDT management */
+
+/*
+ * Describe the in-RAM layout of a GDT segment descriptor. This structure 
+ * describes a memory segment
+ */
+struct gdt_segment_descriptor {
+    unsigned short limit_low;
+	unsigned short base_low;
+	unsigned char base_mid;
+   	unsigned char access;
+    unsigned char limit_high: 4;
+	unsigned char flags:4;
+	unsigned char base_high;
+}__attribute__((packed));
+
+/*
+ * This one describes the in-RAM layout of the GDT table itself, that contains
+ * the address and the size of the segment descriptors
+ */
+struct gdt_descriptors_table {
+    unsigned short limit;
+    unsigned int base;
+}__attribute__((packed));
+
 
 #endif /* STAGE2_H */
