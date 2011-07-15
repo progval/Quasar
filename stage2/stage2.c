@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 /*
  * Loading part of stage2
  * The stage2's job is to get multiboot info, load and jump to the 
@@ -25,17 +26,89 @@
 
 #include "stage2.h"
 
-/* Macro that tells if the bit 'n' of 'flags' is set to 1 */
-#define IS_SET(flags,n) ((flags >> n) & 0x1)
-/* macro to reboot the computer */
-#define reboot() outb(0x64, 0xFE)
+/*
+ * Entry point, called from the ASM file. Main method of stage2
+ */
+int main(unsigned long magic, struct multiboot *mboot)
+{        
+    char *video = (char *)0xB8000;
+    char *cmdline;
+    unsigned int bootdev, flags;
+    int i = 0;
 
-void paging_init()
-{
     unsigned int *page_directory = (unsigned int *)0x20000;
     unsigned int *page_table = (unsigned int *)0x21000;
     unsigned int page_addr = 0;
-    int i;
+
+    /* Are you Grub ? */
+    if(magic == MULTIBOOT_BOOTLOADER_MAGIC) {
+        printf("> Booting from a multiboot-compliant bootloader... \n");
+        flags = mboot->flags;
+
+        /* Read mem info : bit 0 indicates if mem fields are valids */
+        if(IS_SET(flags, 0)) {
+            printf("> Lower memory : found %d Kb \n", mboot->mem_lower);
+            printf("> Upper memory : found %d Kb \n", mboot->mem_upper);
+        }
+        else
+            printf("> Unable to get memory info \n");
+
+        /* Where are we booting from ? 
+         * Bit 1 indicates if this field is ok */
+        if(IS_SET(flags, 1)) {
+            bootdev = mboot->boot_device;
+            printf("> Booting from BIOS device %d\n", (bootdev & 0xFF));
+        }
+
+        /* Read the kernel command line */
+        if(IS_SET(flags, 2)) {
+            cmdline = (char *) mboot->cmd_line;
+            printf("> Kernel command line : %s \n", cmdline);
+        }
+    }
+    else
+        printf("> Booting from an unknown bootloader \n");
+
+    /* 
+     * The limit of our IDT register is the size in bytes of the table. We know 
+     * our IDT contains 256 descriptors, that are 4-words long. The total size
+     * is of 8 bytes * 256 = 2048 bytes.
+     */
+    idt_table.limit = 256*sizeof(struct idt_interrupt_descriptor) - 1;
+    idt_table.base = (unsigned int) &descriptors;
+
+    /* Setup the PIC, I.E. the Programmable Interrupt Controller */
+    outb(0x20, 0x11);
+    outb(0xA0, 0x11);
+    outb(0x21, 0x20);
+    outb(0xA1, 0x28);
+    outb(0x21, 0x04);
+    outb(0xA1, 0x02);
+    outb(0x21, 0x01);
+    outb(0xA1, 0x01);
+    outb(0x21, 0x0);
+    outb(0xA1, 0x0);
+
+    /* Initialize all interrupts with a default callback */
+    for(i = 0; i < 256; i++)
+    {    
+        descriptors[i].callback_low = ((unsigned int) _asm_callback) & 0xFFFF;
+        descriptors[i].callback_high = (((unsigned int) _asm_callback) >> 16) & 0xFFFF;
+        descriptors[i].selector = 0x08;
+        descriptors[i].zero = 0;
+        descriptors[i].flags = 0x8E;
+    }
+
+    /* override the keyboard interrupt, as it will need it's own callback */
+    descriptors[33].callback_low = ((unsigned int) _asm_callback_kbd) & 0xFFFF;
+    descriptors[33].callback_high = (((unsigned int) _asm_callback_kbd) >> 16) & 0xFFFF;
+    descriptors[33].selector = 0x08;
+    descriptors[33].zero = 0;
+    descriptors[33].flags = 0x8E;
+		
+    /* Tell the processor where the new IDT is */
+    asm("lidt (idt_table)");    
+    asm("sti");
 
     /* The first entry point to the first page table located just after the page directory */
     page_directory[0] = 0x21000 | 3;
@@ -50,100 +123,6 @@ void paging_init()
             mov %%cr0, %%eax \n \
             or %1, %%eax     \n \
             mov %%eax, %%cr0" :: "i"(0x20000), "i"(0x80000000));
-}
 
-struct gdt_descriptors_table gdt_table;
-struct gdt_segment_descriptor segments[256];
-
-inline static void gdt_init_descriptor(int n, 
-                                       unsigned int base, 
-                                       unsigned int limit, 
-                                       unsigned char access, 
-                                       unsigned char flags)
-{    
-    /* put the values in the structure */
-    segments[n].limit_low = limit & 0xFFFF;
-    segments[n].limit_high = (limit & 0xF0000) >> 16;
-    
-    segments[n].base_low = base & 0xFFFF;
-    segments[n].base_mid = (base >> 16) & 0xFF;
-    segments[n].base_high = (base >> 24) & 0xFF;
-    
-    segments[n].access = access;
-    segments[n].flags = flags & 0xF;
-}
-
-void gdt_init()
-{
-    /* We use 4 segments, the null segment, and one for code, data, and stack */ 
-    gdt_init_descriptor(0, 0x0, 0x0, 0x0, 0x0);
-	gdt_init_descriptor(1, 0x0, 0xFFFFF, 0x9B, 0x0D);
-	gdt_init_descriptor(2, 0x0, 0xFFFFF, 0x93, 0x0D);
-	gdt_init_descriptor(3, 0x0, 0x0, 0x97, 0x0D);	
-	
-	/* The total size of our descriptors is 256 descriptors x 8 bytes (each 
-	   descriptor is 8-bytes long) */
-	gdt_table.limit = 256*8;
-	gdt_table.base = (unsigned int) &segments;
-	
-	/* tell the processor that we have and a brand new GDT */
-	asm("lgdtl (gdt_table)");
-	
-	/* Load our segments */
-	asm("   movw $0x10, %ax	\n \
-            movw %ax, %ds	\n \
-            movw %ax, %es	\n \
-            movw %ax, %fs	\n \
-            movw %ax, %gs	\n \
-            ljmp $0x08, $next	\n \
-            next:		\n");
-            
-}
-
-/*
- * Entry point, called from the ASM file. Main method of stage2
- */
-int main(unsigned long magic, struct multiboot *mboot)
-{        
-    char *video = (char *)0xB8000;
-    char *cmdline;
-    unsigned int bootdev, flags;
-    int i = 0;
-    gdt_init();
-    paging_init();
-    
-    /* Are you Grub ? */
-    if(magic == MULTIBOOT_BOOTLOADER_MAGIC)
-    {
-        printf("> Booting from a multiboot-compliant bootloader... \n");
-        flags = mboot->flags;
-        
-        /* Read mem info : bit 0 indicates if mem fields are valids */
-        if(IS_SET(flags, 0))
-        {
-            printf("> Lower memory : found %d Kb \n", mboot->mem_lower);
-            printf("> Upper memory : found %d Kb \n", mboot->mem_upper);
-        } else printf("> Unable to get memory info \n");
-        
-        /* Where are we booting from ? 
-         * Bit 1 indicates if this field is ok */
-        if(IS_SET(flags, 1))
-        {
-            bootdev = mboot->boot_device;
-            printf("> Booting from BIOS device %d\n", (bootdev & 0xFF));
-        } 
-        
-        /* Read the kernel command line */
-        if(IS_SET(flags, 2))
-        {
-            cmdline = (char *) mboot->cmd_line;
-            printf("> Kernel command line : %s \n", cmdline);
-        }
-    }
-    else
-        printf("> Booting from an unknown bootloader \n");
-    
-    idt_init();
-    asm("sti");
     while(1);
 }

@@ -49,3 +49,69 @@ inline unsigned short inw(unsigned short port)
     asm volatile("inw %%dx,%%ax":"=a" (ret):"d" (port));
     return ret;
 }
+
+void putcar(unsigned char c)
+{
+    static int x = 0, y = 0;
+    unsigned char *video, *tmp;
+    video = (unsigned char *)(0xB8000 + 2*x + 160*y);
+
+    switch(c) {
+    case '\n':
+        x = 0;
+        y++;
+    break;
+
+    case 8:
+        if(x) 
+        {
+            *(video+1) = 0x0;
+            x--;
+        }
+    break;
+
+    case 9:
+        x = x + 8 - (x % 8);
+    break;
+
+    case '\r':
+        x = 0;
+    break;
+
+    default:
+        *video = c;
+        *(video + 1) = 0x07;
+        x++;
+        if(x > 79)
+        {
+            x = 0;
+            y++;
+        }
+    break;
+    }
+
+    if(y > 24)
+    {
+        for(video = (unsigned char *) 0xB8000; 
+			video < (unsigned char *)0xB8000 + 160*25; 
+			video+=2)
+        {
+            tmp = (unsigned char*) (video + 160*(y - 24));
+            
+            if(tmp < (unsigned char*) (0xB8000 + 160*25))
+            {
+                *video = *tmp;
+                *(video+1) = *(tmp + 1);
+            }
+            else
+            {
+                *video = 0;
+                *(video + 1) = 0x07;
+            }
+        }
+
+        y -= (y - 24);
+        if(x < 0)
+            x = 0;
+    }
+}
