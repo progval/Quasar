@@ -65,6 +65,25 @@ int main(unsigned long magic, struct multiboot *mboot)
             cmdline = (char *) mboot->cmd_line;
             printf("> Kernel command line : %s \n", cmdline);
         }
+        
+        if(IS_SET(flags, 11)) { // Damn, it works!
+            struct vesa_mode_info *vmi = (struct vesa_mode_info *) mboot->vbe_control_info;
+            char *videoMemory = (char *) vmi->lfb_ptr;
+            int width = (int) vmi->v_res;
+            int height = (int) vmi->h_res;
+
+            // Fill the screen with white
+            int w, h;
+            for (h = 0; h < height; h++)
+            {
+                for (w = 0; w < width; w++)
+                {
+                    *videoMemory++ = 255; // Blue
+                    *videoMemory++ = 255; // Green
+                    *videoMemory++ = 255; // Red
+                }
+            }
+        }
     }
     else
         printf("> Booting from an unknown bootloader \n");

@@ -120,4 +120,46 @@ struct idt_interrupt_descriptor descriptors[256];
 extern void _asm_callback();
 extern void _asm_callback_kbd();
 
+/* 
+ * VBE structures
+ */
+
+struct vesa_mode_info {
+    unsigned short mod_attr;
+    unsigned char win_attr[2];
+    unsigned short win_grain;
+    unsigned short win_size;
+    unsigned short win_seg[2];
+    unsigned short win_scheme;
+    unsigned short logical_scan;
+
+    unsigned short h_res;
+    unsigned short v_res;
+    unsigned char char_width;
+    unsigned char char_height;
+    unsigned char memory_planes;
+    unsigned char bpp;
+    unsigned char banks;
+    unsigned char memory_layout;
+    unsigned char bank_size;
+    unsigned char image_planes;
+    unsigned char page_function;
+
+    unsigned char rmask;
+    unsigned char rpos;
+    unsigned char gmask;
+    unsigned char gpos;
+    unsigned char bmask;
+    unsigned char bpos;
+    unsigned char resv_mask;
+    unsigned char resv_pos;
+    unsigned char dcm_info;
+
+    unsigned int lfb_ptr;
+    unsigned int offscreen_ptr;
+    unsigned short offscreen_size;
+
+    unsigned char reserved[206];
+};
+
 #endif /* STAGE2_H */
