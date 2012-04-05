@@ -1,6 +1,6 @@
 SOURCES=stage2_s.o stage2_c.o printf.o disk.o io.o shell.o interrupts_callback.o
-CFLAGS=-nostdlib -fno-builtin -fno-stack-protector
-LDFLAGS=-Tlinker.ld
+CFLAGS=-nostdlib -fno-builtin -fno-stack-protector -m32
+LDFLAGS=-Tlinker.ld -melf_i386
 ASFLAGS=-f elf
 CC=gcc
 AS=nasm
@@ -31,4 +31,4 @@ image:
 	grub-mkrescue -o Quasar.iso image-fs/
 
 qemu:
-	qemu -boot d -cdrom Quasar.iso
+	qemu-system-i386 -boot d -cdrom Quasar.iso

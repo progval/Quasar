@@ -25,6 +25,7 @@
  */
 
 #include "stage2.h"
+#include "disk.h"
 
 /*
  * Entry point, called from the ASM file. Main method of stage2
@@ -124,6 +125,14 @@ int main(unsigned long magic, struct multiboot *mboot)
     descriptors[33].selector = 0x08;
     descriptors[33].zero = 0;
     descriptors[33].flags = 0x8E;
+
+    /* add another callback for the page fautls */
+    descriptors[14].callback_low = ((unsigned int) _asm_callback_pagefault) & 0xFFFF;
+    descriptors[14].callback_high = (((unsigned int) _asm_callback_pagefault) >> 16) & 0xFFFF;
+    descriptors[14].selector = 0x08;
+    descriptors[14].zero = 0;
+    descriptors[14].flags = 0x8E;
+
 		
     /* Tell the processor where the new IDT is */
     asm("lidt (idt_table)");    
@@ -143,5 +152,14 @@ int main(unsigned long magic, struct multiboot *mboot)
             or %1, %%eax     \n \
             mov %%eax, %%cr0" :: "i"(0x20000), "i"(0x80000000));
 
+    struct drive *ret = find_drives();
+    list_drives(ret);
+
     while(1);
 }
+
+void c_callback_pagefault()
+{
+    printf("PAGE FAULT !!!!!\n");
+}
+

@@ -75,7 +75,11 @@
 /* File systems magic numbers */
 
 #define NO_FS                   0x0
+#define FS_FAT32                0x0C
 #define FS_EXT                  0x83
+
+#include "disk.h"
+#include "fat.h"
 
 /*
  * Loops for the given delay. Used to wait the end of an I/O operation.
@@ -102,13 +106,13 @@ static char *identify_fs(unsigned char magic_number)
             return "Empty partition";
         case FS_EXT:
             return "Linux EXT";
-            break;
+        case FS_FAT32:
+            return "FAT 32";
         default:
             return "Unknown FS";
-            break;
     }
 }
-            
+
 /*
  * Read a single sector (located at the offset 'sector') on the given
  * drive, and place it in 'buf'. 'port' is the processor port of the
@@ -120,7 +124,7 @@ ide_read(long sector, void *buf, unsigned short port, char master)
 {
     unsigned char cyl_low, cyl_high, sect, head, status;
     int devselect, i, timeout;
-    short *buffer;
+    unsigned char *buffer;
     
     if(master == ATA_DISK_MASTER)
         devselect = ATA_DRIVE_MASTER;
@@ -162,16 +166,20 @@ ide_read(long sector, void *buf, unsigned short port, char master)
     }
 
     /* get the data */
-    buffer = (short *) buf;
-    for(i = 0; i < 256; i++)
-        buffer[i] = inw(port + ATA_DATA);
+    buffer = (char *) buf;
+    for(i = 0; i < 512; i++)
+        buffer[i] = inb(port + ATA_DATA);
 }
+
+void fat32_read(long)
 
 /*
  * Lists the drives and their partitions on the IDE controllers 
  */
-void whereami()
+struct drive *find_drives()
 {
+    struct drive *ret = 0;
+
     int i, j, k;
     /* the 4 ports that we have to test */
     int ports[4] = {0x1F0, 0x170, 0xF0, 0x70};
@@ -181,13 +189,9 @@ void whereami()
     int ctrl_port;
     unsigned char bufsect[512];
 
-    printf("> Searching for drives and partitions... \n");
-
     /* test each port */
     for(i = 0; i < 4; i++)
     {
-        printf("> Trying port %d \n", i);
-
         /* tmp buffers */
         char byte1, byte2;
         unsigned char a = 0, b = 0;
@@ -199,21 +203,24 @@ void whereami()
         /* is our controller present ? */
         byte1 = inb(port + 6);
         byte2 = (byte1 & 0x10) >> 4;
+
         if(byte2 == 0)
         {
             byte1 |= 0x10;
             outb(port + 6, byte1);
         }
+
         else
         {
             byte1 = byte1 & 0xEF;
             outb(port + 6, byte1);
         }
+
         byte1 = inb(port + 6);
         byte1 = (byte1 & 0x10) >> 4;
+
         if(byte1 != byte2) /* the controller is present */
         {
-            printf(">     Found controller \n");
             /* initialize it */
             outb(ctrl_port + 6, 4);
             udelay(100); 
@@ -229,6 +236,10 @@ void whereami()
 
             if((a == 1) && (b == 1))
             {
+                struct drive *d;
+                printf("> %d", d);
+                d->port = i;
+
 				/* which type of device is this ? */
                 a = inb(port + ATA_CYL_LSB);
                 b = inb(port + ATA_CYL_MSB);
@@ -236,28 +247,82 @@ void whereami()
                 if((a == 0) && (b == 0))
                 {
                     /* this is an ATA drive */
-                    printf(">     Found ATA drive." 
-							"Looking for partitions \n");
+                    d->type = ATA_DISK_MASTER | ATA_DISK;
 
                     /* read the partition table */
                     ide_read(0, &bufsect, port, ATA_DISK_MASTER);
+
                     /* check if we have a valid MBR signature */
                     if((bufsect[510] == 0x55) && (bufsect[511] == 0xAA))
                     {
+                        struct partition *part = 0;
+
                         for(j = 0; j < 4; j++)
                         {
-                            char *buf = identify_fs(bufsect[450+j*16]);
-                            printf(">           Found partition type "
-                                   "%s\n",buf);
+                            unsigned char fs_magic_number = bufsect[450+j*16];
+
+                            if(fs_magic_number != 0)
+                            {
+                                struct partition *p;
+                                p->drive = d;
+                                p->fs_type = fs_magic_number;
+                                p->no = j;
+                                p->next = part;
+                                part = p;
+                            }
                         }
+
+                        d->parts = part;
                     } 
                 } 
 
                 else if((a == 0x14) && (b == 0xEB))
-                    printf(">     Found ATAPI drive \n");
+                {
+                    /* this is an ATA drive */
+                    d->type = ATA_DISK_MASTER | ATAPI_DISK;
+                }
+            
+                d->next = ret;
+                ret = d;
+                printf("> %d", ret);
             }
         }
 
         /* the controller is missing, do nothing */
+    }
+
+    return ret;
+}
+
+void list_drives(struct drive *d)
+{
+    printf("miaou");
+    while(d != 0)
+    {
+        printf("Found drive, port %d", d->port);
+
+        if(d->type & ATA_DISK_MASTER)
+            printf(", master");
+
+        if(d->type & ATA_DISK)
+        {
+            printf(", ATA\n");
+
+            struct partition *part = d->parts;
+
+            while(part)
+            {
+                int fs = part->fs_type;
+                printf("\tFound partition %d, type %s (%d", part->no,
+                    identify_fs(fs), fs);
+
+                part = part->next;
+            }
+        }
+
+        else if(d->type & ATAPI_DISK)
+            printf(", ATAPI\n"); 
+
+        d = d->next;
     }
 }

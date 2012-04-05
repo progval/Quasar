@@ -119,6 +119,7 @@ struct idt_interrupt_descriptor descriptors[256];
 
 extern void _asm_callback();
 extern void _asm_callback_kbd();
+extern void _asm_callback_pagefault();
 
 /* 
  * VBE structures
