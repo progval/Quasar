@@ -5,6 +5,9 @@ all: disk.img
 disk.img: bootloader/loader stage1/stage1.bin stage2/stage2.bin writeloader/writeloader
 	./diskmaker.sh bootloader/loader stage1/stage1.bin stage2/stage2.bin disk.img
 
+stage2/stage2.bin:
+	make -C stage2/
+
 writeloader/writeloader:
 	make -C writeloader/
 

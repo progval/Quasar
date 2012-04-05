@@ -171,8 +171,6 @@ ide_read(long sector, void *buf, unsigned short port, char master)
         buffer[i] = inb(port + ATA_DATA);
 }
 
-void fat32_read(long)
-
 /*
  * Lists the drives and their partitions on the IDE controllers 
  */
