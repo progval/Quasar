@@ -45,29 +45,29 @@ if [[ $OS = "Darwin" ]]; then
         echo -e "\\033[1;31mFAILED: Error partitionning disk image. (Check command output) \\033[0;39m"
 		exit 1
 	fi
- else
+else
 
-    #     16065
+	#     16065
 	#  quite dirty but...
 	echo " o
-     x
-	 c
-	 16065
-	 r
-	 n
-	 p
-	 1
-	 1
-	 1439
-     t
-     c
-     a
-     1
-	 w
-     " | fdisk disk.img
+     	x
+	c
+	16065
+	r
+	n
+	p
+	1
+	1
+	1439
+     	t
+     	c
+     	a
+     	1
+	w
+     	" | fdisk disk.img
 
 	if [[ $? -ne 0 ]]; then
-        echo -e "\\033[1;31mFAILED: Error partitionning disk image. (Check command output) \\033[0;39m"
+        	echo -e "\\033[1;31mFAILED: Error partitionning disk image. (Check command output) \\033[0;39m"
 		exit 1
 	fi
 fi
@@ -100,8 +100,8 @@ if [[ $OS = "Darwin" ]]; then
 else
 
 	# This is _VERY_ dirty... one should find a cleaner way
-	offset=`fdisk -u -l $4 | grep W95 | cut -d ' ' -f 16`
-    offset=$(($offset*512))
+	offset=63
+        offset=$(($offset*512))
 
 	losetup -o $offset /dev/loop0 $4
 

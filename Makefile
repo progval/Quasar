@@ -18,7 +18,7 @@ bootloader/loader:
 	make -C bootloader/
 
 runqemu: disk.img
-	qemu-system-i386 -monitor stdio -boot a -hda disk.img
+	qemu-system-x86_64 -monitor stdio -boot a -hda disk.img
 
 clean:
 	make -C writeloader/ clean
