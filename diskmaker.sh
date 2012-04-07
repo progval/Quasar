@@ -36,35 +36,36 @@ fi
 
 echo -e "\\033[1;32mPartitionning disk... \\033[0;39m"
 
-if [[ $OS -eq "Darwin" ]]; then
+if [[ $OS = "Darwin" ]]; then
 
-	# as usual... it is always easier on Darwin :|
-	echo -e "(Command:\\033[1;33m\tfdisk -i -a dos $4 \\033[0;39m)"
-	fdisk -i -a dos $4
+	 echo -e "(Command:\\033[1;33m\tfdisk -i -a dos $4 \\033[0;39m)"
+	 fdisk -i -a dos $4
 
-	if [[ $? -ne 0 ]]; then
+     if [[ $? -ne 0 ]]; then
         echo -e "\\033[1;31mFAILED: Error partitionning disk image. (Check command output) \\033[0;39m"
 		exit 1
 	fi
-else
+ else
 
-	# in fact it dont' work... one should have to fix this
+    #     16065
+	#  quite dirty but...
+	echo " o
+     x
+	 c
+	 16065
+	 r
+	 n
+	 p
+	 1
+	 1
+	 1439
+     t
+     c
+     a
+     1
+	 w
+     " | fdisk disk.img
 
-	# # and quite dirty on Linux...
-	# fdisk disk.img << EOF
-	# x
-	# c
-	# 16065
-	# r
-	# n
-	# p
-	# 1
-	# 1
-	# 16065
-	# w
-	# EOF
-
-	# not sure if this is very efficient in this case...
 	if [[ $? -ne 0 ]]; then
         echo -e "\\033[1;31mFAILED: Error partitionning disk image. (Check command output) \\033[0;39m"
 		exit 1
@@ -76,9 +77,8 @@ fi
 
 echo -e "\\033[1;32mCreating FAT filesystem on first partition... \\033[0;39m"
 
-if [[ $OS -eq "Darwin" ]]; then
+if [[ $OS = "Darwin" ]]; then
 	
-	# everything is always easier with Darwin :) </troll>
 	echo -e "(Command:\\033[1;33m\thdiutil attach $4\\033[0;39m)"
 	device=`hdiutil attach -nomount $4 | head -n 2 | tail -n 1 | cut -d ' ' -f 1`
 	
@@ -99,10 +99,9 @@ if [[ $OS -eq "Darwin" ]]; then
 
 else
 
-	# it's a bit more complicated on Linux
 	# This is _VERY_ dirty... one should find a cleaner way
-	offset=`fdisk -ul $4 | grep W95 | cut -d ' ' -f 14`
-	offset=$(($offset*512))
+	offset=`fdisk -u -l $4 | grep W95 | cut -d ' ' -f 16`
+    offset=$(($offset*512))
 
 	losetup -o $offset /dev/loop0 $4
 

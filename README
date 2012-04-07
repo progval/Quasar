@@ -1,16 +1,18 @@
 README - Quasar kernel
+----------------------
+This project has been created by:
+- Leo Testard <leo.testard@gmail.com>
+- Florent Revest <florent.revest666@gmail.com>
 
-Leo Testard <leo.testard@gmail.com>
-Florent Revest <florent.revest666@gmail.com>
 
-You will need the following tools to get Quasar working :
-	* gcc
-	* nasm
-	* ld
+First of all, you must check that you have a simple working compilation chain including: gcc, nasm and ld
+In order to compile and install Quasar on a disk image you just have to type:
+    $ make
+
+And to test Quasar with QEMU, type:
+    $ make runqemu
+
+If you have troubles compiling stage2, you'll probably need the following additional tools :
 	* Grub2
 	* xorriso (used to generate the disk image)
 
-To compile, cd to stage2 and run :
-	* make
-	* make image # this will generates the disk image, need root privileges
-	* make qemu # to test it out, you will need the qemu emulator

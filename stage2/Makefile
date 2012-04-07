@@ -1,6 +1,6 @@
 SOURCES=stage2_s.o stage2_c.o printf.o disk.o io.o shell.o interrupts_callback.o
 CFLAGS=-nostdlib -fno-builtin -fno-stack-protector -m32
-LDFLAGS=--oformat binary
+LDFLAGS=--oformat binary -melf_i386
 ASFLAGS=-f elf
 AS=nasm
 

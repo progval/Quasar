@@ -24,4 +24,5 @@ clean:
 	make -C writeloader/ clean
 	make -C bootloader/ clean
 	make -C stage1/ clean
+	make -C stage2/ clean
 	rm disk.img
