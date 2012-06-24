@@ -142,6 +142,7 @@ void printf(char *s, ...)
                     }
     
                     printf(buf);
+                    break;
                     
                 case 'x':
                 case 'X':
