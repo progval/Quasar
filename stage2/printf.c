@@ -99,67 +99,69 @@ void printf(char *s, ...)
                 c = *s++;
             }
 
-            if(c == 'd')
+            switch (c)
             {
-                ival = va_arg(ap, int);
-
-                /* is our number negative ? */
-                if(ival < 0)
-                {
-                    /* yes, store it's absolute value */
-                    uival = 0 - ival;
-                    neg++;
-                }
-                else
-                    uival = ival;
-
-                itoa(buf, uival, 10);
-                buflen = strlen(buf);
-
-                if(buflen < size)
-                {
-                    for(i = size, j = buflen; i >= 0; i--, j--)
-                        buf[i] = (j >= 0) ? buf[j] : '0';
-                }        
-
-                if(neg)
-                    printf("-%s", buf);
-                else
-                    printf("%s", buf);
-            }
-
-            else if(c == 'u')
-            {
-                uival = va_arg(ap, int);
-                itoa(buf, uival, 10);
-
-                buflen = strlen(buf);
-                if(buflen < size)
-                {
-                    for(i = size, j = buflen; i >= 0; i--, j--)
-                        buf[i] = (j >= 0) ? buf[j] : '0';
-                }
-
-                printf(buf);
-            }
-
-            else if(c == 'x' || c == 'X')
-            {
-                uival = va_arg(ap, int);
-                itoa(buf, uival, 16);
-
-                buflen = strlen(buf);
-                if(buflen < size)
-                {
-                    for(i = size, j = buflen; i >= 0; i--, j--)
-                        buf[i] = (j >= 0) ? buf[j] : '0';
-                }
-
-                printf("0x%s", buf);
-            }        
-
-            else if(c == 's')
-                printf((char *) va_arg(ap, int));
+                case 'd':
+                    ival = va_arg(ap, int);
+    
+                    /* is our number negative ? */
+                    if(ival < 0)
+                    {
+                        /* yes, store it's absolute value */
+                        uival = 0 - ival;
+                        neg++;
+                    }
+                    else
+                        uival = ival;
+    
+                    itoa(buf, uival, 10);
+                    buflen = strlen(buf);
+    
+                    if(buflen < size)
+                    {
+                        for(i = size, j = buflen; i >= 0; i--, j--)
+                            buf[i] = (j >= 0) ? buf[j] : '0';
+                    }        
+    
+                    if(neg)
+                        printf("-%s", buf);
+                    else
+                        printf("%s", buf);
+                    break;
+                    
+                    
+                case 'u':
+                    uival = va_arg(ap, int);
+                    itoa(buf, uival, 10);
+    
+                    buflen = strlen(buf);
+                    if(buflen < size)
+                    {
+                        for(i = size, j = buflen; i >= 0; i--, j--)
+                            buf[i] = (j >= 0) ? buf[j] : '0';
+                    }
+    
+                    printf(buf);
+                    
+                case 'x':
+                case 'X':
+                    uival = va_arg(ap, int);
+                    itoa(buf, uival, 16);
+    
+                    buflen = strlen(buf);
+                    if(buflen < size)
+                    {
+                        for(i = size, j = buflen; i >= 0; i--, j--)
+                            buf[i] = (j >= 0) ? buf[j] : '0';
+                    }
+    
+                    printf("0x%s", buf);
+                    break;
+                    
+                case 's':
+                    printf((char *) va_arg(ap, int));
+                    break;
+             }
         }
         else
             putcar(c);
